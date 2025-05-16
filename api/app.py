@@ -29,16 +29,16 @@ class EmailForm(FlaskForm):
 
 @contextmanager
 def smtp_connection():
-    """Context manager for SMTP connection"""
+    """Context manager for SMTP connection with optimized timeout"""
     smtp_host = os.getenv('SMTP_HOST', 'mailhog')
     smtp_port = int(os.getenv('SMTP_PORT', '1026' if smtp_host != 'mailhog' else '1025'))
     
     # Set a shorter timeout for the connection
-    socket.setdefaulttimeout(3)  # 3 seconds timeout
+    socket.setdefaulttimeout(2)  # 2 seconds timeout
     
     try:
-        server = smtplib.SMTP(smtp_host, smtp_port, timeout=3)
-        server.set_debuglevel(1)
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=2)
+        server.set_debuglevel(0)  # Disable debug output
         yield server
     finally:
         try:
@@ -47,7 +47,7 @@ def smtp_connection():
             pass
 
 def send_email_async(from_email, to_email, subject, message):
-    """Send email using a background process"""
+    """Send email with optimized connection handling"""
     try:
         # Create message
         msg = MIMEMultipart()
