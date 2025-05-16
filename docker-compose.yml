@@ -1,0 +1,28 @@
+version: '3'
+
+services:
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "1026:1025" # Changed host port to 1026
+      - "8025:8025" # Web interface
+    networks:
+      - smtp_network
+    restart: unless-stopped
+
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - SMTP_HOST=mailhog
+      - SMTP_PORT=1025
+    depends_on:
+      - mailhog
+    networks:
+      - smtp_network
+    restart: unless-stopped
+
+networks:
+  smtp_network:
+    driver: bridge 
