@@ -8,6 +8,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
+import traceback
 
 # Load environment variables
 load_dotenv()
@@ -16,7 +17,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='../templates')
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
 
 # MailerSend SMTP Configuration
@@ -31,37 +32,65 @@ class EmailForm(FlaskForm):
     subject = StringField('Subject', validators=[DataRequired()])
     message = TextAreaField('Message', validators=[DataRequired()])
 
+@app.errorhandler(500)
+def internal_error(error):
+    logger.error(f"500 error: {str(error)}")
+    logger.error(traceback.format_exc())
+    return jsonify({
+        'status': 'error',
+        'message': 'Internal server error',
+        'details': str(error)
+    }), 500
+
+@app.errorhandler(404)
+def not_found_error(error):
+    logger.error(f"404 error: {str(error)}")
+    return jsonify({
+        'status': 'error',
+        'message': 'Resource not found',
+        'details': str(error)
+    }), 404
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    form = EmailForm()
-    if form.validate_on_submit():
-        try:
-            # Create email message
-            msg = MIMEMultipart()
-            msg['From'] = FROM_EMAIL
-            msg['To'] = form.recipient_email.data
-            msg['Subject'] = form.subject.data
-            msg.attach(MIMEText(form.message.data, 'plain'))
+    try:
+        form = EmailForm()
+        if form.validate_on_submit():
+            try:
+                # Create email message
+                msg = MIMEMultipart()
+                msg['From'] = FROM_EMAIL
+                msg['To'] = form.recipient_email.data
+                msg['Subject'] = form.subject.data
+                msg.attach(MIMEText(form.message.data, 'plain'))
 
-            # Send email using MailerSend SMTP
-            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-                server.starttls()
-                server.login(SMTP_USERNAME, SMTP_PASSWORD)
-                server.send_message(msg)
+                # Send email using MailerSend SMTP
+                with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+                    server.starttls()
+                    server.login(SMTP_USERNAME, SMTP_PASSWORD)
+                    server.send_message(msg)
 
-            return jsonify({
-                'status': 'success',
-                'message': 'Email sent successfully'
-            })
-            
-        except Exception as e:
-            logger.error(f"Error sending email: {str(e)}")
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
-            
-    return render_template('index.html', form=form)
+                return jsonify({
+                    'status': 'success',
+                    'message': 'Email sent successfully'
+                })
+                
+            except Exception as e:
+                logger.error(f"Error sending email: {str(e)}")
+                logger.error(traceback.format_exc())
+                return jsonify({
+                    'status': 'error',
+                    'message': str(e)
+                }), 500
+                
+        return render_template('index.html', form=form)
+    except Exception as e:
+        logger.error(f"Error in index route: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
 
 @app.route('/api/send-email', methods=['POST'])
 def send_email():
@@ -95,6 +124,8 @@ def send_email():
         }), 200
 
     except Exception as e:
+        logger.error(f"Error in send_email route: {str(e)}")
+        logger.error(traceback.format_exc())
         return jsonify({
             'success': False,
             'error': str(e)

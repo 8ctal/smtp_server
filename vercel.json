@@ -1,19 +1,18 @@
 {
     "version": 2,
-    "functions": {
-        "api/*.py": {
-            "maxDuration": 10,
-            "memory": 1024
+    "builds": [
+        {
+            "src": "api/app.py",
+            "use": "@vercel/python"
         }
-    },
+    ],
     "routes": [
         {
-            "src": "/health",
-            "dest": "/api/app.py"
-        },
-        {
             "src": "/(.*)",
-            "dest": "/api/app.py"
+            "dest": "api/app.py"
         }
-    ]
+    ],
+    "env": {
+        "FLASK_ENV": "production"
+    }
 } 
