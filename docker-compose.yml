@@ -1,28 +1,27 @@
 version: '3'
 
 services:
-  mailhog:
-    image: mailhog/mailhog
-    ports:
-      - "1026:1025" # Changed host port to 1026
-      - "8025:8025" # Web interface
-    networks:
-      - smtp_network
-    restart: unless-stopped
-
-  web:
+  app:
     build: .
     ports:
       - "3000:3000"
+    volumes:
+      - .:/app
     environment:
-      - SMTP_HOST=mailhog
-      - SMTP_PORT=1025
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
     depends_on:
-      - mailhog
+      - redis
     networks:
-      - smtp_network
-    restart: unless-stopped
+      - app-network
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
 
 networks:
-  smtp_network:
+  app-network:
     driver: bridge 
